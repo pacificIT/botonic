@@ -29,7 +29,7 @@ Hello!
 
     const path = flags.path? resolve(flags.path) : process.cwd()
     const route = flags.route ? flags.route : ''
-    const context = flags.context ? flags.context : ''
+    const context = flags.context ? flags.context : {}
 
     this.botonic = new Botonic(path)
 

@@ -15,7 +15,7 @@ const { createServer } = require('http')
 const { parse } = require('url')
 
 import { Botonic } from '../botonic'
-import { track } from '../utils'
+import { track, parseOutputServer } from '../utils'
 
 export default class Run extends Command {
   static description = 'Start a web based interactive session'
@@ -40,12 +40,6 @@ export default class Run extends Command {
 
     this.botonic = new Botonic(path)
 
-    /*this.botonic.processInput(args.input, route, context).then((response: string) => {
-      console.log(response)
-    })*/
-
-    
-
     const handle = this.botonic.app.getRequestHandler()
 
     this.botonic.app.prepare().then(() => {
@@ -53,43 +47,40 @@ export default class Run extends Command {
         // Be sure to pass `true` as the second argument to `url.parse`.
         // This tells it to parse the query portion of the URL.
         const parsedUrl = parse(req.url, true)
-        const { pathname, query } = parsedUrl
-
-        if (pathname === '/') {
-          // return index.html
-        } else if (pathname === '/input') {
-          try {
-            var output = await this.botonic.processInput(query, null, {})
-            var json = {}
-            let html = load(output)
-            let outputs = html('[type=text], [type=carrousel], [type=image], [type=video], [type=audio],\
-              [type=document], [type=location], [type=button]')
-              .map((i, elem) => {
-                let el = html(elem)
-                let out = ''
-                if(el.is('[type=text]')) {
-                  json = {
-                    type: 'text',
-                    data: el.contents().filter(e => el.contents()[e].type === 'text').text().trim()
-                  }
-                }
-              })
-            //return sendHTML(req, res, html, req.method, {})//, this.renderOpts)
-            return sendJSON(res, json, req.method)
-          } catch(e) {
-            console.log('NOOOOOOO')
-            res.statusCode = 500
-            return sendHTML(req, res, e.toString(), req.method, {})
-            //return renderErrorToHTML(e.toString(), req, res, pathname, query)
-          }
-        } else {
-          handle(req, res, parsedUrl)
-        }
+        const { pathname } = parsedUrl
+        var jsonString = ''
+        req.on('data', (data) => {
+          jsonString += data;
+        })
+        req.on('end', () => {
+            var reqBody = JSON.parse(jsonString)
+            if (pathname === '/') {
+              // return index.html
+            } else if (pathname === '/input') {
+              try {
+                this.botonic.processInput(reqBody.input, reqBody.route, reqBody.context)
+                  .then((resp) => {
+                    let rp = parseOutputServer(resp)
+                    let response = {
+                      outputs: rp.output_json,
+                      context: rp.context,
+                      route: rp.route
+                    }
+                    return sendJSON(res, response, req.method)
+                  })
+              } catch(e) {
+                res.statusCode = 500
+                return sendHTML(req, res, e.toString(), req.method, {})
+                //return renderErrorToHTML(e.toString(), req, res, pathname, query)
+              }
+            } else {
+              handle(req, res, parsedUrl)
+            }
+            })
       }).listen(port, (err: any) => {
         if (err) throw err
         console.log(`> Ready on http://localhost:${port}`)
       })
     })
   }
-
 }
