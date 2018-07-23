@@ -1,6 +1,6 @@
 
 import { load } from 'cheerio'
-import * as Table from 'cli-table2'
+import * as Table from 'cli-table3'
 
 const fs = require('fs')
 const os = require('os')
@@ -153,7 +153,7 @@ export function parseOutputServer(output: string) {
   let soruceData = '[type=image], [type=video], [type=audio], [type=document]'
   let context = {}
   let route = {}
-  var output_json = [] as Object[]
+  var output_json: any = [] as Object[] 
   try {
     let nextData = JSON.parse(output.split('__NEXT_DATA__ =')[1].split('module')[0])
     context = nextData.props.pageProps.context || {}
